@@ -14,7 +14,19 @@ func routes(app *config.AppConfig) http.Handler {
 
 	mux.Use(middleware.Recoverer)
 
-	mux.Get("/users", handlers.Repo.AllUsers)
+	mux.Route("/api/auth", func(r chi.Router) {
+		r.Post("/", handlers.Repo.TestPostRequest)
+		r.Post("/refresh", handlers.Repo.TestPostRequest)
+	})
+	mux.Route("/api/users", func(r chi.Router) {
+		r.Post("/", handlers.Repo.TestPostRequest)
+	})
+	mux.Route("/api/tasks", func(r chi.Router) {
+		r.Get("/{userID}", handlers.Repo.AllUsers)
+		r.Post("/", handlers.Repo.TestPostRequest)
+		r.Patch("/{id}", handlers.Repo.TestPostRequest)
+
+	})
 
 	fileServer := http.FileServer(http.Dir("./static/"))
 	mux.Handle("/static/*", http.StripPrefix("/static", fileServer))
