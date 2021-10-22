@@ -3,8 +3,6 @@ package models
 import (
 	"errors"
 	"time"
-
-	"github.com/dgrijalva/jwt-go"
 )
 
 type JSONResponse struct {
@@ -30,11 +28,7 @@ type AuthenticationResp struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
-type AuthCustomClaims struct {
-	UserID int `json:"user_id"`
-	jwt.StandardClaims
-}
-
+// Payload contains necessary data to send to client through accessToken
 type Payload struct {
 	UserID    int       `json:"user_id"`
 	IssuedAt  time.Time `json:"issued_at"`
