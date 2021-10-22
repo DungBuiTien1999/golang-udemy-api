@@ -7,25 +7,27 @@ import (
 	"github.com/DungBuiTien1999/udemy-api/internal/handlers"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/rs/cors"
 )
 
 func routes(app *config.AppConfig) http.Handler {
 	mux := chi.NewMux()
 
 	mux.Use(middleware.Recoverer)
+	mux.Use(cors.AllowAll().Handler)
 
 	mux.Route("/api/auth", func(r chi.Router) {
-		r.Post("/", handlers.Repo.TestPostRequest)
+		r.Post("/", handlers.Repo.Authentication)
 		r.Post("/refresh", handlers.Repo.TestPostRequest)
 	})
 	mux.Route("/api/users", func(r chi.Router) {
-		r.Post("/", handlers.Repo.TestPostRequest)
+		r.Post("/", handlers.Repo.Register)
 	})
 	mux.Route("/api/tasks", func(r chi.Router) {
-		r.Get("/{userID}", handlers.Repo.AllUsers)
-		r.Post("/", handlers.Repo.TestPostRequest)
-		r.Patch("/{id}", handlers.Repo.TestPostRequest)
-
+		r.Use(Auth)
+		r.Get("/{userID}", handlers.Repo.TasksOfUser)
+		r.Post("/", handlers.Repo.AddTask)
+		r.Put("/{id}", handlers.Repo.UpdateTask)
 	})
 
 	fileServer := http.FileServer(http.Dir("./static/"))

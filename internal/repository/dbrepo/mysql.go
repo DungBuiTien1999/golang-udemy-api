@@ -127,7 +127,7 @@ func (m *mysqlDBRepo) GetUserByUsername(username string) (models.User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	query := `select id, username, password, rfToken, created_at, updated_at from users where username = ?`
+	query := `select id, username, password, created_at, updated_at from users where username = ?`
 
 	var user models.User
 
@@ -135,7 +135,6 @@ func (m *mysqlDBRepo) GetUserByUsername(username string) (models.User, error) {
 		&user.ID,
 		&user.Username,
 		&user.Password,
-		&user.RfToken,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
@@ -152,7 +151,7 @@ func (m *mysqlDBRepo) InsertUser(user models.User) error {
 
 	stmt := `insert into users 
 	(username, password) values 
-	(?, ?, ?)
+	(?, ?)
 	`
 
 	_, err := m.DB.ExecContext(ctx, stmt, user.Username, user.Password)
