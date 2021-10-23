@@ -1,11 +1,10 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/DungBuiTien1999/udemy-api/internal/config"
 	"github.com/DungBuiTien1999/udemy-api/internal/driver"
@@ -13,8 +12,6 @@ import (
 	"github.com/DungBuiTien1999/udemy-api/internal/models"
 	"github.com/DungBuiTien1999/udemy-api/internal/repository"
 	"github.com/DungBuiTien1999/udemy-api/internal/repository/dbrepo"
-	"github.com/dgrijalva/jwt-go"
-	_ "github.com/joho/godotenv/autoload"
 	"github.com/thanhpk/randstr"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -41,45 +38,10 @@ func NewHandlers(r *Repository) {
 	Repo = r
 }
 
-func (m *Repository) AllUsers(w http.ResponseWriter, r *http.Request) {
-	users, err := m.DB.AllUsers()
-	if err != nil {
-		helpers.ServerError(w, err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		resp := models.GenericError{
-			Message: err.Error(),
-		}
-		helpers.ToJSON(resp, w)
-		return
-	}
-
-	resp := models.JSONResponse{
-		Status: http.StatusOK,
-		Data:   users,
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	helpers.ToJSON(resp, w)
-}
-
-func (m *Repository) TestPostRequest(w http.ResponseWriter, r *http.Request) {
-
-	var t models.User
-	err := helpers.FromJSON(&t, r.Body)
-	if err != nil {
-		panic(err)
-	}
-	errs := m.App.Validator.Validate(t)
-	if len(errs) != 0 {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		resp := models.ValidationError{
-			Messages: errs.Errors(),
-		}
-		helpers.ToJSON(resp, w)
-		return
+func NewTestingRepo(a *config.AppConfig) *Repository {
+	return &Repository{
+		App: a,
+		DB:  dbrepo.NewTestingRepo(a),
 	}
 }
 
@@ -88,7 +50,6 @@ func (m *Repository) TasksOfUser(w http.ResponseWriter, r *http.Request) {
 	exploted := strings.Split(r.RequestURI, "/")
 	userID, err := strconv.Atoi(exploted[3])
 	if err != nil {
-		helpers.ServerError(w, err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		resp := models.GenericError{
@@ -100,7 +61,6 @@ func (m *Repository) TasksOfUser(w http.ResponseWriter, r *http.Request) {
 
 	tasks, err := m.DB.GetTasksByUserID(userID)
 	if err != nil {
-		helpers.ServerError(w, err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		resp := models.GenericError{
@@ -147,7 +107,6 @@ func (m *Repository) Register(w http.ResponseWriter, r *http.Request) {
 
 	err = m.DB.InsertUser(newUser)
 	if err != nil {
-		helpers.ServerError(w, err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		resp := models.GenericError{
@@ -187,7 +146,6 @@ func (m *Repository) AddTask(w http.ResponseWriter, r *http.Request) {
 
 	err = m.DB.InsertTask(task)
 	if err != nil {
-		helpers.ServerError(w, err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		resp := models.GenericError{
@@ -212,7 +170,6 @@ func (m *Repository) UpdateTask(w http.ResponseWriter, r *http.Request) {
 	exploted := strings.Split(r.RequestURI, "/")
 	id, err := strconv.Atoi(exploted[3])
 	if err != nil {
-		helpers.ServerError(w, err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		resp := models.GenericError{
@@ -226,6 +183,7 @@ func (m *Repository) UpdateTask(w http.ResponseWriter, r *http.Request) {
 
 	err = helpers.FromJSON(&task, r.Body)
 	if err != nil {
+		log.Println("hehe")
 		panic(err)
 	}
 	errs := m.App.Validator.Validate(task)
@@ -241,7 +199,6 @@ func (m *Repository) UpdateTask(w http.ResponseWriter, r *http.Request) {
 
 	newTask, err := m.DB.UpdateTaskByID(id, task)
 	if err != nil {
-		helpers.ServerError(w, err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		resp := models.GenericError{
@@ -281,7 +238,6 @@ func (m *Repository) Authentication(w http.ResponseWriter, r *http.Request) {
 
 	user, err := m.DB.GetUserByUsername(u.Username)
 	if err != nil || user.Username == "" {
-		helpers.ServerError(w, err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 		resp := models.AuthenticationResp{
@@ -334,11 +290,7 @@ func (m *Repository) Authentication(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	secretToken := os.Getenv("SECRET_TOKEN")
-
-	payload := models.NewPayload(user.ID, time.Hour*24) // access token has expired at 24 hours
-	at := jwt.NewWithClaims(jwt.SigningMethodHS256, payload)
-	accessToken, err := at.SignedString([]byte(secretToken))
+	accessToken, err := helpers.CreateNewAccessToken(user.ID)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
@@ -359,6 +311,65 @@ func (m *Repository) Authentication(w http.ResponseWriter, r *http.Request) {
 		Messages:     "Login successfully",
 		AccessToken:  accessToken,
 		RefreshToken: rfToken,
+	}
+	helpers.ToJSON(resp, w)
+}
+
+type tokens struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+}
+
+// PostRefreshToken returns new access token
+func (m *Repository) PostRefreshToken(w http.ResponseWriter, r *http.Request) {
+	var t tokens
+	err := helpers.FromJSON(&t, r.Body)
+	if err != nil {
+		panic(err)
+	}
+	payload, err := helpers.VerifyToken(t.AccessToken)
+	if err != nil {
+		helpers.ServerError(w, err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		resp := models.AuthenticationResp{
+			Authorized:   false,
+			Messages:     err.Error(),
+			AccessToken:  "",
+			RefreshToken: "",
+		}
+		helpers.ToJSON(resp, w)
+		return
+	}
+	isValidRfToken := m.DB.IsValidRefreshToken(payload.UserID, t.RefreshToken)
+	if isValidRfToken {
+		newAccessToken, err := helpers.CreateNewAccessToken(payload.UserID)
+		if err != nil {
+			helpers.ServerError(w, err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			resp := models.GenericError{
+				Message: "Error when create new token",
+			}
+			helpers.ToJSON(resp, w)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		resp := models.AuthenticationResp{
+			Authorized:   true,
+			Messages:     "Got refresh token successfully",
+			AccessToken:  newAccessToken,
+			RefreshToken: t.RefreshToken,
+		}
+		helpers.ToJSON(resp, w)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusBadRequest)
+	resp := models.GenericError{
+		Message: "Invalid Refresh Token",
 	}
 	helpers.ToJSON(resp, w)
 }

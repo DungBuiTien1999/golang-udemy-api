@@ -48,9 +48,9 @@ func run() (*driver.DB, error) {
 	// read flags
 	inProduction := flag.Bool("production", true, "Application is in production")
 	dbHost := flag.String("dbhost", "localhost", "Database host")
-	dbName := flag.String("dbname", "", "Database name")
-	dbUser := flag.String("dbuser", "", "Database user")
-	dbPass := flag.String("dbpass", "", "Database password")
+	dbName := flag.String("dbname", "todoapp", "Database name")
+	dbUser := flag.String("dbuser", "root", "Database user")
+	dbPass := flag.String("dbpass", "root", "Database password")
 	dbPort := flag.String("dbport", "3306", "Database port")
 	dbSSL := flag.String("dbssl", "skip-verify", "Database ssl settings (skip-verify, preferred)")
 

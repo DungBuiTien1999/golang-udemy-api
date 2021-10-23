@@ -18,7 +18,7 @@ func routes(app *config.AppConfig) http.Handler {
 
 	mux.Route("/api/auth", func(r chi.Router) {
 		r.Post("/", handlers.Repo.Authentication)
-		r.Post("/refresh", handlers.Repo.TestPostRequest)
+		r.Post("/refresh", handlers.Repo.PostRefreshToken)
 	})
 	mux.Route("/api/users", func(r chi.Router) {
 		r.Post("/", handlers.Repo.Register)
